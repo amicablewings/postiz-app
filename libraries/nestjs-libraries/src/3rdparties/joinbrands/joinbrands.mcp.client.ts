@@ -51,7 +51,7 @@ export class JoinBrandsMcpClient {
     args: Record<string, unknown> = {}
   ): Promise<T> {
     const sessionId = await this.initialize();
-    const payload = await this.request(
+    const { payload } = await this.request(
       {
         jsonrpc: '2.0',
         id: 2,
