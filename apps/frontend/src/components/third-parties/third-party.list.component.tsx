@@ -81,8 +81,21 @@ export const ApiModal: FC<{
           onSubmit={methods.handleSubmit(submit)}
         >
           <div className="pt-[10px]">
-            <Input label="API Key" name="api" />
+            <Input
+              label={
+                identifier === 'joinbrands'
+                  ? 'JoinBrands MCP API token'
+                  : 'API Key'
+              }
+              name="api"
+            />
           </div>
+          {identifier === 'joinbrands' && (
+            <div className="text-[12px] text-textColor/70">
+              Create a token in JoinBrands under Settings, AI integrations. You
+              can also type env if JOINBRANDS_API_TOKEN is set on the server.
+            </div>
+          )}
           <div>
             <Button loading={loading} type="submit">
               {t('add_integration', 'Add Integration')}
