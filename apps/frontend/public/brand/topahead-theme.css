@@ -100,9 +100,14 @@ path[fill='#612AD5'] {
 .bg-btnPrimary,
 .bg-customColor51,
 .bg-customColor50,
+.bg-forth,
 .forceChange .changeColor {
   background: #00f0ff !important;
   color: #050508 !important;
+}
+
+.flex-1.relative.w-full.my-\[30px\] {
+  display: none !important;
 }
 
 .swal2-confirm {
