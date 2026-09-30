@@ -88,6 +88,10 @@ export class OrganizationService {
     return this._organizationRepository.getTeam(orgId);
   }
 
+  deleteTeamInvite(orgId: string, id: string) {
+    return this._organizationRepository.deleteTeamInvite(orgId, id);
+  }
+
   async setStreak(organizationId: string, type: 'start' | 'end') {
     return this._organizationRepository.setStreak(organizationId, type);
   }
@@ -97,22 +101,59 @@ export class OrganizationService {
   }
 
   async inviteTeamMember(org: Organization, user: User, body: AddTeamMemberDto) {
-    const timeLimit = dayjs().add(2, 'day').format('YYYY-MM-DD HH:mm:ss');
+    const expires = dayjs().add(2, 'day');
+    const timeLimit = expires.format('YYYY-MM-DD HH:mm:ss');
     const id = makeId(5);
+    const email = (body.email || '').trim();
+
+    if (email) {
+      const alreadyMember =
+        await this._organizationRepository.findOrgMemberByEmail(org.id, email);
+      if (alreadyMember) {
+        throw new HttpException(
+          'User is already a member of this organization',
+          400
+        );
+      }
+    }
+
+    await this._organizationRepository.saveTeamInvite({
+      organizationId: org.id,
+      email,
+      role: body.role as 'USER' | 'ADMIN',
+      inviteId: id,
+      expiresAt: expires.toDate(),
+    });
+
     const url =
       process.env.FRONTEND_URL +
-      `/?org=${AuthService.signJWT({ ...body, orgId: org.id, timeLimit, id })}`;
+      `/?org=${AuthService.signJWT({
+        ...body,
+        email,
+        orgId: org.id,
+        timeLimit,
+        id,
+      })}`;
+
+    let emailed = false;
+    let emailError: string | undefined;
     if (body.sendEmail) {
       const inviter = user.name
         ? `${user.name} (${user.email})`
         : user.email;
-      await this._notificationsService.sendEmail(
-        body.email,
+      emailed = await this._notificationsService.sendEmailNow(
+        email,
         `${user.name || user.email} invited you to join "${org.name}"`,
         `${inviter} has invited you to join the "${org.name}" team.<br /><a href="${url}">Accept the invitation</a> to get started.<br />The link will expire in 2 days.`
       );
+      if (!emailed) {
+        emailError = this._notificationsService.hasEmailProvider()
+          ? 'The invite was saved, but the email could not be sent. The link was copied so you can send it yourself.'
+          : 'The invite was saved, but email is not configured on this server. The link was copied so you can send it yourself.';
+      }
     }
-    return { url };
+
+    return { url, emailed, emailError };
   }
 
   async addTeamMemberByEmail(org: Organization, body: AdminAddTeamMemberDto) {

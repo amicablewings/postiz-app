@@ -10,7 +10,8 @@ export class OrganizationRepository {
   constructor(
     private _organization: PrismaRepository<'organization'>,
     private _userOrg: PrismaRepository<'userOrganization'>,
-    private _user: PrismaRepository<'user'>
+    private _user: PrismaRepository<'user'>,
+    private _invite: PrismaRepository<'organizationInvite'>
   ) {}
 
   createMaxUser(id: string, name: string, saasName: string, email: string) {
@@ -454,6 +455,41 @@ export class OrganizationRepository {
       },
     });
 
+    const joinedUser = await this._user.model.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        email: true,
+      },
+    });
+
+    await this._invite.model.organizationInvite.updateMany({
+      where: {
+        inviteId: id,
+        acceptedAt: null,
+      },
+      data: {
+        acceptedAt: new Date(),
+      },
+    });
+
+    if (joinedUser?.email) {
+      await this._invite.model.organizationInvite.updateMany({
+        where: {
+          organizationId: orgId,
+          acceptedAt: null,
+          email: {
+            equals: joinedUser.email,
+            mode: 'insensitive',
+          },
+        },
+        data: {
+          acceptedAt: new Date(),
+        },
+      });
+    }
+
     return create;
   }
 
@@ -528,7 +564,7 @@ export class OrganizationRepository {
   }
 
   async getTeam(orgId: string) {
-    return this._organization.model.organization.findUnique({
+    const team = await this._organization.model.organization.findUnique({
       where: {
         id: orgId,
       },
@@ -549,6 +585,114 @@ export class OrganizationRepository {
         },
       },
     });
+
+    if (!team) {
+      return team;
+    }
+
+    const invites = await this._invite.model.organizationInvite.findMany({
+      where: {
+        organizationId: orgId,
+        acceptedAt: null,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        expiresAt: true,
+        createdAt: true,
+      },
+    });
+
+    return {
+      ...team,
+      invites,
+    };
+  }
+
+  findOrgMemberByEmail(orgId: string, email: string) {
+    return this._userOrg.model.userOrganization.findFirst({
+      where: {
+        organizationId: orgId,
+        user: {
+          email: {
+            equals: email,
+            mode: 'insensitive',
+          },
+        },
+      },
+    });
+  }
+
+  async saveTeamInvite(data: {
+    organizationId: string;
+    email: string;
+    role: 'USER' | 'ADMIN';
+    inviteId: string;
+    expiresAt: Date;
+  }) {
+    const email = data.email.trim();
+    if (email) {
+      const existing = await this._invite.model.organizationInvite.findFirst({
+        where: {
+          organizationId: data.organizationId,
+          acceptedAt: null,
+          email: {
+            equals: email,
+            mode: 'insensitive',
+          },
+        },
+      });
+
+      if (existing) {
+        return this._invite.model.organizationInvite.update({
+          where: {
+            id: existing.id,
+          },
+          data: {
+            email,
+            role: data.role,
+            inviteId: data.inviteId,
+            expiresAt: data.expiresAt,
+          },
+        });
+      }
+    }
+
+    return this._invite.model.organizationInvite.create({
+      data: {
+        organizationId: data.organizationId,
+        email,
+        role: data.role,
+        inviteId: data.inviteId,
+        expiresAt: data.expiresAt,
+      },
+    });
+  }
+
+  async deleteTeamInvite(orgId: string, id: string) {
+    const invite = await this._invite.model.organizationInvite.findFirst({
+      where: {
+        id,
+        organizationId: orgId,
+        acceptedAt: null,
+      },
+    });
+
+    if (!invite) {
+      return false;
+    }
+
+    await this._invite.model.organizationInvite.delete({
+      where: {
+        id,
+      },
+    });
+
+    return true;
   }
 
   getAllUsersOrgs(orgId: string) {
