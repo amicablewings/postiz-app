@@ -89,6 +89,14 @@ services:
       # NEXT_PUBLIC_SENTRY_DSN: 'http://spotlight:8969/stream'
       # SENTRY_SPOTLIGHT: '1'
 
+      # === Email (Resend)
+      # Set RESEND_API_KEY on the server. Do not commit the key.
+      # From address must be on a domain verified in that same Resend account.
+      EMAIL_PROVIDER: 'resend'
+      EMAIL_FROM_ADDRESS: 'noreply@topahead.com'
+      EMAIL_FROM_NAME: 'TopAhead Postiz'
+      # RESEND_API_KEY: ''
+
       # === Misc Settings
       OPENAI_API_KEY: ''
       # Only this OAuth client can receive verified user email claims via OIDC.
