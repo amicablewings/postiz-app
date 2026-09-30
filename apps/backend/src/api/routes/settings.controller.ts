@@ -60,6 +60,25 @@ export class SettingsController {
     return this._organizationService.addTeamMemberByEmail(org, body);
   }
 
+  @Delete('/team/invite/:id')
+  @CheckPolicies(
+    [AuthorizationActions.Create, Sections.TEAM_MEMBERS],
+    [AuthorizationActions.Create, Sections.ADMIN]
+  )
+  async deleteTeamInvite(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string
+  ) {
+    const deleted = await this._organizationService.deleteTeamInvite(
+      org.id,
+      id
+    );
+    if (!deleted) {
+      throw new HttpException('Invite not found', 400);
+    }
+    return { deleted: true };
+  }
+
   @Delete('/team/:id')
   @CheckPolicies(
     [AuthorizationActions.Create, Sections.TEAM_MEMBERS],

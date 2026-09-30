@@ -41,6 +41,7 @@ model Organization {
   thirdParty          ThirdParty[]
   usedCodes           UsedCodes[]
   users               UserOrganization[]
+  invites             OrganizationInvite[]
   webhooks            Webhooks[]
   oauthApp            OAuthApp[]
   oauthAuthorizations OAuthAuthorization[]
@@ -150,6 +151,24 @@ model UserOrganization {
 
   @@unique([userId, organizationId])
   @@index([disabled])
+}
+
+model OrganizationInvite {
+  id             String       @id @default(uuid())
+  organizationId String
+  email          String       @default("")
+  role           Role
+  inviteId       String
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([inviteId])
+  @@index([email])
+  @@index([acceptedAt])
 }
 
 model GitHub {
