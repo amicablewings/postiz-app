@@ -95,7 +95,10 @@ services:
       OPENAI_OAUTH_CLIENT_ID: ''
       NEXT_PUBLIC_DISCORD_SUPPORT: ''
       NEXT_PUBLIC_POLOTNO: ''
-      API_LIMIT: 30
+      # Hourly cap for POST /public/v1/posts per organization (Postiz throttle).
+      # 0 disables it. Meta, X, TikTok, and other networks still apply their own limits.
+      # Auth stays required. If unset, the server defaults to 90/hour.
+      API_LIMIT: '0'
 
       # === Payment / Stripe Settings
       FEE_AMOUNT: 0.05
