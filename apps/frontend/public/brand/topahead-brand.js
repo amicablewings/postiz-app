@@ -5,9 +5,10 @@
   }
 
   const replaceLoginHero = () => {
-    const nodes = Array.from(document.querySelectorAll('div'));
-    const hero = nodes.find((node) =>
-      (node.textContent || '').includes('Entrepreneurs use')
+    const hero = Array.from(document.querySelectorAll('div.text-center')).find(
+      (node) =>
+        node.children.length <= 3 &&
+        (node.textContent || '').includes('Entrepreneurs use')
     );
     if (!hero || hero.dataset.taBranded === '1') {
       return;
