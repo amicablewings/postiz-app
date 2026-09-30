@@ -110,6 +110,22 @@ path[fill='#612AD5'] {
   display: none !important;
 }
 
+div.text-center:has(> span.text-\[\#FC69FF\]) {
+  font-size: 0;
+  line-height: 0;
+}
+
+div.text-center:has(> span.text-\[\#FC69FF\])::after {
+  content: 'TopAhead social desk';
+  display: block;
+  font-family: Geist, Inter, sans-serif;
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+  color: #fafafa;
+}
+
 .swal2-confirm {
   background: #00f0ff !important;
   color: #050508 !important;

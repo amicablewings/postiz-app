@@ -3,3 +3,7 @@ FROM postiz-app:joinbrands
 COPY apps/frontend/public/brand /app/apps/frontend/public/brand
 COPY apps/frontend/src/app/topahead-theme.scss /app/apps/frontend/src/app/topahead-theme.scss
 COPY docker/topahead/nginx.conf /etc/nginx/nginx.conf
+
+# Bake tokens into the hashed Next CSS this image already serves.
+RUN cat /app/apps/frontend/public/brand/topahead-theme.css >> /app/apps/frontend/.next/static/chunks/051l.y8boi_9i.css \
+  && cat /app/apps/frontend/public/brand/topahead-theme.css >> /app/apps/frontend/.next/static/chunks/02o8s6w4u_euh.css
