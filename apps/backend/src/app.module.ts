@@ -4,7 +4,10 @@ import { ApiModule } from '@gitroom/backend/api/api.module';
 import { APP_GUARD } from '@nestjs/core';
 import { PoliciesGuard } from '@gitroom/backend/services/auth/permissions/permissions.guard';
 import { PublicApiModule } from '@gitroom/backend/public-api/public.api.module';
-import { ThrottlerBehindProxyGuard } from '@gitroom/nestjs-libraries/throttler/throttler.provider';
+import {
+  publicApiPostThrottleLimit,
+  ThrottlerBehindProxyGuard,
+} from '@gitroom/nestjs-libraries/throttler/throttler.provider';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AgentModule } from '@gitroom/nestjs-libraries/agent/agent.module';
 import { ThirdPartyModule } from '@gitroom/nestjs-libraries/3rdparties/thirdparty.module';
@@ -36,7 +39,9 @@ import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
       throttlers: [
         {
           ttl: 3600000,
-          limit: process.env.API_LIMIT ? Number(process.env.API_LIMIT) : 90,
+          // null disables the public post cap. The guard skips before
+          // this number is used. Route-level @Throttle overrides still apply.
+          limit: publicApiPostThrottleLimit() ?? 1000000000,
         },
       ],
       storage: new ThrottlerStorageRedisService(ioRedis),
