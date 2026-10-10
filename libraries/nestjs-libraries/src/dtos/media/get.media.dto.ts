@@ -1,4 +1,4 @@
-import { Type, Transform } from 'class-transformer';
+import { Transform } from 'class-transformer';
 import { IsIn, IsOptional, IsNumber, IsString, Min } from 'class-validator';
 
 export class GetMediaDto {
