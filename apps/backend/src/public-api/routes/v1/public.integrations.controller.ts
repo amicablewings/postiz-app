@@ -250,8 +250,7 @@ export class PublicIntegrationsController {
     Sentry.metrics.count('public_api-request', 1);
     const { pages, results } = await this._mediaService.getMedia(
       org.id,
-      query.page,
-      query.search
+      query
     );
 
     return {

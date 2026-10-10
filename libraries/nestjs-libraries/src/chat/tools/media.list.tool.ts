@@ -56,8 +56,7 @@ Use the returned path as an attachment URL in integrationSchedulePostTool instea
 
         const { pages, results } = await this._mediaService.getMedia(
           organizationId,
-          inputData.page || 1,
-          inputData.search
+          { page: inputData.page || 1, search: inputData.search }
         );
 
         return {
