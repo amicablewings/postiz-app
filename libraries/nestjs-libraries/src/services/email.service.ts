@@ -61,15 +61,20 @@ export class EmailService {
     html: string,
     replyTo?: string
   ) {
-    if (to.indexOf('@') === -1) {
-      return;
+    if (!to || to.indexOf('@') === -1) {
+      return false;
+    }
+
+    if (!this.hasProvider()) {
+      console.log('No email provider configured');
+      return false;
     }
 
     if (!process.env.EMAIL_FROM_ADDRESS || !process.env.EMAIL_FROM_NAME) {
       console.log(
         'Email sender information not found in environment variables'
       );
-      return;
+      return false;
     }
 
     const modifiedHtml = `
@@ -137,8 +142,16 @@ export class EmailService {
           process.env.EMAIL_FROM_ADDRESS,
           replyTo
         );
+        if (
+          sends &&
+          typeof sends === 'object' &&
+          'sent' in sends &&
+          (sends as { sent?: boolean }).sent === false
+        ) {
+          throw new Error('Email provider did not send');
+        }
         console.log(sends);
-        return;
+        return true;
       } catch (err) {
         lastErr = err;
         console.log(`Email attempt ${attempt + 1}/3 failed:`, err);
@@ -148,5 +161,6 @@ export class EmailService {
       }
     }
     console.log(`Email to ${to} failed after 3 attempts:`, lastErr);
+    return false;
   }
 }

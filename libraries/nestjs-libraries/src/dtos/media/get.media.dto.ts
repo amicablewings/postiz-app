@@ -1,5 +1,5 @@
-import { IsOptional, IsNumber, IsString, Min } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
+import { IsIn, IsOptional, IsNumber, IsString, Min } from 'class-validator';
 
 export class GetMediaDto {
   @IsOptional()
@@ -11,4 +11,17 @@ export class GetMediaDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  // Customer id, or "none" for media that is not used by a branded channel.
+  @IsOptional()
+  @IsString()
+  brand?: string;
+
+  @IsOptional()
+  @IsIn(['image', 'video'])
+  type?: 'image' | 'video';
+
+  @IsOptional()
+  @IsIn(['newest', 'oldest', 'name'])
+  sort?: 'newest' | 'oldest' | 'name';
 }

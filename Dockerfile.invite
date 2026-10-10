@@ -1,0 +1,15 @@
+FROM postiz-app:joinbrands
+COPY apps/backend/src/api/routes/settings.controller.ts /app/apps/backend/src/api/routes/settings.controller.ts
+COPY apps/frontend/src/components/settings/teams.component.tsx /app/apps/frontend/src/components/settings/teams.component.tsx
+COPY libraries/nestjs-libraries/src/database/prisma/notifications/notification.service.ts /app/libraries/nestjs-libraries/src/database/prisma/notifications/notification.service.ts
+COPY libraries/nestjs-libraries/src/database/prisma/organizations/organization.repository.ts /app/libraries/nestjs-libraries/src/database/prisma/organizations/organization.repository.ts
+COPY libraries/nestjs-libraries/src/database/prisma/organizations/organization.service.ts /app/libraries/nestjs-libraries/src/database/prisma/organizations/organization.service.ts
+COPY libraries/nestjs-libraries/src/database/prisma/schema.prisma /app/libraries/nestjs-libraries/src/database/prisma/schema.prisma
+COPY libraries/nestjs-libraries/src/emails/resend.provider.ts /app/libraries/nestjs-libraries/src/emails/resend.provider.ts
+COPY libraries/nestjs-libraries/src/services/email.service.ts /app/libraries/nestjs-libraries/src/services/email.service.ts
+WORKDIR /app
+ENV NODE_OPTIONS=--max-old-space-size=6144
+RUN pnpm run prisma-generate \
+ && pnpm --filter ./apps/backend run build \
+ && pnpm --filter ./apps/orchestrator run build \
+ && pnpm --filter ./apps/frontend run build

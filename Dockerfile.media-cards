@@ -1,0 +1,6 @@
+FROM postiz-app:topahead
+COPY apps/frontend/src/components/media/media.component.tsx /app/apps/frontend/src/components/media/media.component.tsx
+WORKDIR /app
+ENV NODE_OPTIONS=--max-old-space-size=6144
+RUN pnpm --filter ./apps/frontend run build \
+ && for f in /app/apps/frontend/.next/static/chunks/*.css; do cat /app/apps/frontend/public/brand/topahead-theme.css >> "$f"; done
