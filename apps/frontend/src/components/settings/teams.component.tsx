@@ -28,15 +28,16 @@ const roles = [
     value: 'ADMIN',
   },
 ];
-export const AddMember = () => {
+export const AddMember = ({ onInvited }: { onInvited: () => void }) => {
   const modals = useModals();
   const fetch = useFetch();
   const toast = useToaster();
+  const t = useT();
   const resolver = useMemo(() => {
     return classValidatorResolver(AddTeamMemberDto);
   }, []);
   const form = useForm({
-    values: {
+    defaultValues: {
       email: '',
       role: '',
       sendEmail: true,
@@ -50,25 +51,44 @@ export const AddMember = () => {
   });
   const submit = useCallback(
     async (values: { email: string; role: string; sendEmail: boolean }) => {
-      const { url } = await (
-        await fetch('/settings/team', {
-          method: 'POST',
-          body: JSON.stringify(values),
-        })
-      ).json();
-      if (values.sendEmail) {
+      const response = await fetch('/settings/team', {
+        method: 'POST',
+        body: JSON.stringify(values),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const message = Array.isArray(payload?.message)
+          ? payload.message.join(', ')
+          : payload?.message;
+        toast.show(
+          message || t('could_not_send_invitation', 'Could not save the invitation'),
+          'warning'
+        );
+        return;
+      }
+      onInvited();
+      if (values.sendEmail && payload.emailed) {
         modals.closeAll();
         toast.show(t('invitation_link_sent', 'Invitation link sent'));
         return;
       }
-      copy(url);
+      if (payload.url) {
+        copy(payload.url);
+      }
       modals.closeAll();
-      toast.show(t('link_copied_to_clipboard', 'Link copied to clipboard'));
+      toast.show(
+        values.sendEmail
+          ? payload.emailError ||
+              t(
+                'invite_saved_email_failed',
+                'The invite was saved, but the email could not be sent. The link was copied.'
+              )
+          : t('link_copied_to_clipboard', 'Link copied to clipboard'),
+        values.sendEmail ? 'warning' : 'success'
+      );
     },
-    []
+    [fetch, modals, onInvited, t, toast]
   );
-
-  const t = useT();
 
   return (
     <FormProvider {...form}>
@@ -117,15 +137,29 @@ export const TeamsComponent = () => {
     []
   );
   const loadTeam = useCallback(async () => {
-    return (await (await fetch('/settings/team')).json()).users as Array<{
-      id: string;
-      role: 'SUPERADMIN' | 'ADMIN' | 'USER';
-      user: {
-        email: string;
+    const team = await (await fetch('/settings/team')).json();
+    return {
+      users: (team?.users || []) as Array<{
         id: string;
-      };
-    }>;
-  }, []);
+        role: 'SUPERADMIN' | 'ADMIN' | 'USER';
+        user: {
+          email: string;
+          id: string;
+        };
+      }>,
+      invites: (team?.invites || []) as Array<{
+        id: string;
+        email: string;
+        role: 'ADMIN' | 'USER';
+        expiresAt: string;
+      }>,
+    };
+  }, [fetch]);
+  const { data, mutate } = useSWR('/api/teams', loadTeam, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    revalidateIfStale: false,
+  });
   const addMember = useCallback(() => {
     modals.openModal({
       classNames: {
@@ -133,14 +167,9 @@ export const TeamsComponent = () => {
       },
       title: t('top_title_add_member', 'Add Member'),
       withCloseButton: true,
-      children: <AddMember />,
+      children: <AddMember onInvited={() => mutate()} />,
     });
-  }, [t]);
-  const { data, mutate } = useSWR('/api/teams', loadTeam, {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-    revalidateIfStale: false,
-  });
+  }, [t, mutate]);
   const remove = useCallback(
     (toRemove: {
         user: {
@@ -160,7 +189,26 @@ export const TeamsComponent = () => {
         });
         await mutate();
       },
-    [t]
+    [t, mutate]
+  );
+  const removeInvite = useCallback(
+    (inviteId: string) => async () => {
+      if (
+        !(await deleteDialog(
+          t(
+            'are_you_sure_remove_team_invite',
+            'Are you sure you want to cancel this invitation?'
+          )
+        ))
+      ) {
+        return;
+      }
+      await fetch(`/settings/team/invite/${inviteId}`, {
+        method: 'DELETE',
+      });
+      await mutate();
+    },
+    [t, mutate]
   );
 
   return (
@@ -174,7 +222,7 @@ export const TeamsComponent = () => {
       </div>
       <div className="my-[16px] mt-[16px] bg-sixth border-fifth border rounded-[4px] p-[24px] flex flex-col gap-[24px]">
         <div className="flex flex-col gap-[16px]">
-          {(data || []).map((p) => (
+          {(data?.users || []).map((p) => (
             <div key={p.user.id} className="flex items-center">
               <div className="flex-1">
                 {capitalize(p.user.email.split('@')[0]).split('.')[0]}
@@ -208,6 +256,37 @@ export const TeamsComponent = () => {
                           />
                         </svg>
                       </div>
+                      <div>{t('remove', 'Remove')}</div>
+                    </div>
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex-1" />
+              )}
+            </div>
+          ))}
+          {(data?.invites || []).map((invite) => (
+            <div key={invite.id} className="flex items-center">
+              <div className="flex-1">
+                {invite.email || t('invite_link', 'Invite link')}
+              </div>
+              <div className="flex-1">
+                {`${
+                  new Date(invite.expiresAt) < new Date()
+                    ? t('invite_expired', 'Invite expired')
+                    : t('invite_pending', 'Invite pending')
+                } (${
+                  invite.role === 'ADMIN' ? t('admin', 'Admin') : t('user', 'User')
+                })`}
+              </div>
+              {myLevel > 0 ? (
+                <div className="flex-1 flex justify-end">
+                  <Button
+                    className={`!bg-customColor3 !h-[24px] border border-customColor21 rounded-[4px] text-[12px]`}
+                    onClick={removeInvite(invite.id)}
+                    secondary={true}
+                  >
+                    <div className="flex justify-center items-center gap-[4px]">
                       <div>{t('remove', 'Remove')}</div>
                     </div>
                   </Button>

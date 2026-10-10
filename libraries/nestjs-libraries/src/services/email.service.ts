@@ -5,6 +5,7 @@ import { EmptyProvider } from '@gitroom/nestjs-libraries/emails/empty.provider';
 import { NodeMailerProvider } from '@gitroom/nestjs-libraries/emails/node.mailer.provider';
 import { TemporalService } from 'nestjs-temporal-core';
 import { timer } from '@gitroom/helpers/utils/timer';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class EmailService {
@@ -41,15 +42,16 @@ export class EmailService {
     addTo: 'top' | 'bottom',
     replyTo?: string
   ) {
+    if (!to || !subject) {
+      return;
+    }
+
     return this._temporalService.client
       .getRawClient()
-      ?.workflow.signalWithStart('sendEmailWorkflow', {
+      ?.workflow.start('sendSingleEmailWorkflow', {
         taskQueue: 'main',
-        workflowId: 'send_email',
-        signal: 'sendEmail',
-        args: [{ queue: [] }],
-        signalArgs: [{ to, subject, html, replyTo, addTo }],
-        workflowIdConflictPolicy: 'USE_EXISTING',
+        workflowId: `send_email_${randomUUID()}`,
+        args: [{ to, subject, html, replyTo, addTo }],
       });
   }
 
@@ -59,15 +61,20 @@ export class EmailService {
     html: string,
     replyTo?: string
   ) {
-    if (to.indexOf('@') === -1) {
-      return;
+    if (!to || to.indexOf('@') === -1) {
+      return false;
+    }
+
+    if (!this.hasProvider()) {
+      console.log('No email provider configured');
+      return false;
     }
 
     if (!process.env.EMAIL_FROM_ADDRESS || !process.env.EMAIL_FROM_NAME) {
       console.log(
         'Email sender information not found in environment variables'
       );
-      return;
+      return false;
     }
 
     const modifiedHtml = `
@@ -135,8 +142,16 @@ export class EmailService {
           process.env.EMAIL_FROM_ADDRESS,
           replyTo
         );
+        if (
+          sends &&
+          typeof sends === 'object' &&
+          'sent' in sends &&
+          (sends as { sent?: boolean }).sent === false
+        ) {
+          throw new Error('Email provider did not send');
+        }
         console.log(sends);
-        return;
+        return true;
       } catch (err) {
         lastErr = err;
         console.log(`Email attempt ${attempt + 1}/3 failed:`, err);
@@ -146,5 +161,6 @@ export class EmailService {
       }
     }
     console.log(`Email to ${to} failed after 3 attempts:`, lastErr);
+    return false;
   }
 }

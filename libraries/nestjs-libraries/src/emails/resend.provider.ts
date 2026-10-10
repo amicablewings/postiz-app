@@ -1,8 +1,6 @@
 import { Resend } from 'resend';
 import { EmailInterface } from '@gitroom/nestjs-libraries/emails/email.interface';
 
-const resend = new Resend(process.env.RESEND_API_KEY || 're_132');
-
 export class ResendProvider implements EmailInterface {
   name = 'resend';
   validateEnvKeys = ['RESEND_API_KEY'];
@@ -14,20 +12,26 @@ export class ResendProvider implements EmailInterface {
     emailFromAddress: string,
     replyTo?: string
   ) {
-    try {
-      const sends = await resend.emails.send({
-        from: `${emailFromName} <${emailFromAddress}>`,
-        to,
-        subject,
-        html,
-        ...(replyTo && { reply_to: replyTo }),
-      });
-
-      return sends;
-    } catch (err) {
-      console.log(err);
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      throw new Error('RESEND_API_KEY is not set');
     }
 
-    return { sent: false };
+    const resend = new Resend(apiKey);
+    const sends = await resend.emails.send({
+      from: `${emailFromName} <${emailFromAddress}>`,
+      to,
+      subject,
+      html,
+      ...(replyTo && { reply_to: replyTo }),
+    });
+
+    // The SDK returns API errors (like 429 rate limits) instead of throwing,
+    // throw so sendEmailSync retries the send
+    if (sends?.error) {
+      throw new Error(`${sends.error.name}: ${sends.error.message}`);
+    }
+
+    return sends;
   }
 }

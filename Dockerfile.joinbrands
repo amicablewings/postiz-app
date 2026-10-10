@@ -1,0 +1,9 @@
+FROM ghcr.io/gitroomhq/postiz-app:latest
+COPY libraries/nestjs-libraries/src/3rdparties /app/libraries/nestjs-libraries/src/3rdparties
+COPY apps/frontend/public/icons/third-party/joinbrands.png /app/apps/frontend/public/icons/third-party/joinbrands.png
+# Public API throttle: API_LIMIT=0 disables hourly cap (PR #1)
+COPY libraries/nestjs-libraries/src/throttler/throttler.provider.ts /app/libraries/nestjs-libraries/src/throttler/throttler.provider.ts
+COPY apps/backend/src/app.module.ts /app/apps/backend/src/app.module.ts
+WORKDIR /app
+ENV NODE_OPTIONS=--max-old-space-size=4096
+RUN pnpm --filter ./apps/backend run build

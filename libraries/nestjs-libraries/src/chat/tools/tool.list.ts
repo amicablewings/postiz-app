@@ -5,10 +5,14 @@ import { GenerateVideoOptionsTool } from '@gitroom/nestjs-libraries/chat/tools/g
 import { VideoFunctionTool } from '@gitroom/nestjs-libraries/chat/tools/video.function.tool';
 import { GenerateVideoTool } from '@gitroom/nestjs-libraries/chat/tools/generate.video.tool';
 import { VideoStatusTool } from '@gitroom/nestjs-libraries/chat/tools/video.status.tool';
+import { ClippingTool } from '@gitroom/nestjs-libraries/chat/tools/clipping.tool';
+import { ClippingStatusTool } from '@gitroom/nestjs-libraries/chat/tools/clipping.status.tool';
+import { ClippingWidgetTicketTool } from '@gitroom/nestjs-libraries/chat/tools/clipping.widget.ticket.tool';
 import { GenerateImageTool } from '@gitroom/nestjs-libraries/chat/tools/generate.image.tool';
 import { IntegrationListTool } from '@gitroom/nestjs-libraries/chat/tools/integration.list.tool';
 import { GroupListTool } from '@gitroom/nestjs-libraries/chat/tools/group.list.tool';
 import { UploadFromUrlTool } from '@gitroom/nestjs-libraries/chat/tools/upload.from.url.tool';
+import { MediaListTool } from '@gitroom/nestjs-libraries/chat/tools/media.list.tool';
 import { PostsListTool } from '@gitroom/nestjs-libraries/chat/tools/posts.list.tool';
 import { PostSettingsTool } from '@gitroom/nestjs-libraries/chat/tools/post.settings.tool';
 import { UploadWidgetTool } from '@gitroom/nestjs-libraries/chat/tools/upload.widget.tool';
@@ -27,8 +31,12 @@ export const toolList = [
   VideoFunctionTool,
   GenerateVideoTool,
   VideoStatusTool,
+  ClippingTool,
+  ClippingStatusTool,
+  ClippingWidgetTicketTool,
   GenerateImageTool,
   UploadFromUrlTool,
+  MediaListTool,
   UploadWidgetTool,
   UploadWidgetTicketTool,
   UploadWidgetStatusTool,

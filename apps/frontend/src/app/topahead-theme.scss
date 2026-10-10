@@ -1,0 +1,59 @@
+// TopAhead brand tokens. Overlay also ships as /brand/topahead-theme.css
+// so the live joinbrands image can pick it up without a frontend rebuild.
+
+:root {
+  --ta-obsidian: #000000;
+  --ta-graphite: #0e0e0e;
+  --ta-panel: #121214;
+  --ta-line: #1c1c20;
+  --ta-cyan: #00f0ff;
+  --ta-violet: #8b5cf6;
+  --ta-pink: #ff2e8c;
+  --ta-text: #fafafa;
+  --ta-muted: rgba(255, 255, 255, 0.6);
+}
+
+:root {
+  .dark,
+  .light {
+    --new-back-drop: #000;
+    --new-settings: #161618;
+    --new-border: #222228;
+    --new-bgColor: var(--ta-obsidian);
+    --new-bgColorInner: var(--ta-graphite);
+    --new-sep: #2a2a32;
+    --new-bgLineColor: var(--ta-line);
+    --new-textItemFocused: var(--ta-graphite);
+    --new-textItemBlur: #9a9aa3;
+    --new-boxFocused: var(--ta-cyan);
+    --new-textColor: 250 250 250;
+    --new-blockSeparator: #222228;
+    --new-btn-simple: #1a1a1f;
+    --new-btn-text: var(--ta-text);
+    --new-btn-primary: var(--ta-cyan);
+    --new-ai-btn: var(--ta-pink);
+    --new-box-hover: #16161a;
+    --new-table-border: #26262c;
+    --new-table-header: #121214;
+    --new-table-text: #9a9aa3;
+    --new-table-text-focused: var(--ta-cyan);
+    --new-small-strips: #0a0a0c;
+    --new-big-strips: #101012;
+    --new-col-color: #1a1a1f;
+    --new-menu-dots: #6b6b74;
+    --new-menu-hover: var(--ta-cyan);
+    --color-primary: var(--ta-obsidian);
+    --color-secondary: var(--ta-graphite);
+    --color-text: var(--ta-text);
+    --color-third: #08080c;
+    --color-forth: var(--ta-cyan);
+    --color-seventh: var(--ta-violet);
+    --color-custom4: var(--ta-violet);
+    --color-custom7: var(--ta-violet);
+    --color-custom24: var(--ta-cyan);
+    --color-custom45: var(--ta-violet);
+    --color-custom50: #0b3a3d;
+    --color-custom51: var(--ta-cyan);
+    --color-modalCustom: #000000;
+  }
+}

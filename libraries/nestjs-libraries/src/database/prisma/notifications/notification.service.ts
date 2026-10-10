@@ -111,6 +111,12 @@ export class NotificationService {
     await this._emailService.sendEmail(to, subject, html, 'top', replyTo);
   }
 
+  // Direct send so the caller can tell whether the message left the server.
+  // The queued path reports success before the provider accepts the mail.
+  sendEmailNow(to: string, subject: string, html: string, replyTo?: string) {
+    return this._emailService.sendEmailSync(to, subject, html, replyTo);
+  }
+
   hasEmailProvider() {
     return this._emailService.hasProvider();
   }

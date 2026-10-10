@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 144" fill="none" role="img" aria-label="TopAhead">
+  <defs>
+    <linearGradient id="ta-mark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F0FF"/>
+      <stop offset="55%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <linearGradient id="ta-word" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#22D3EE"/>
+      <stop offset="55%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(0, 0)">
+    <path d="M0 0 L78 72 L0 144 L28 144 L106 72 L28 0 Z" fill="url(#ta-mark)"/>
+    <path d="M48 0 L126 72 L48 144 L76 144 L154 72 L76 0 Z" fill="url(#ta-mark)" opacity="0.92"/>
+  </g>
+  <text x="186" y="96" font-family="Geist, Inter, Helvetica, Arial, sans-serif" font-size="72" font-weight="600" letter-spacing="-2">
+    <tspan fill="#FAFAFA">Top</tspan><tspan fill="url(#ta-word)">Ahead</tspan>
+  </text>
+</svg>
