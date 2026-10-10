@@ -1,0 +1,13 @@
+FROM postiz-app:topahead
+COPY libraries/nestjs-libraries/src/dtos/media/get.media.dto.ts /app/libraries/nestjs-libraries/src/dtos/media/get.media.dto.ts
+COPY libraries/nestjs-libraries/src/database/prisma/media/media.repository.ts /app/libraries/nestjs-libraries/src/database/prisma/media/media.repository.ts
+COPY libraries/nestjs-libraries/src/database/prisma/media/media.service.ts /app/libraries/nestjs-libraries/src/database/prisma/media/media.service.ts
+COPY apps/backend/src/api/routes/media.controller.ts /app/apps/backend/src/api/routes/media.controller.ts
+COPY apps/frontend/src/components/media/media.component.tsx /app/apps/frontend/src/components/media/media.component.tsx
+COPY apps/frontend/src/components/launches/calendar.tsx /app/apps/frontend/src/components/launches/calendar.tsx
+WORKDIR /app
+ENV NODE_OPTIONS=--max-old-space-size=6144
+RUN pnpm --filter ./apps/backend run build \
+ && pnpm --filter ./apps/orchestrator run build \
+ && pnpm --filter ./apps/frontend run build \
+ && for f in /app/apps/frontend/.next/static/chunks/*.css; do cat /app/apps/frontend/public/brand/topahead-theme.css >> "$f"; done

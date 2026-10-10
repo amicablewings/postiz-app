@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 154 144" fill="none" role="img" aria-label="TopAhead">
+  <defs>
+    <linearGradient id="ta-mark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F0FF"/>
+      <stop offset="55%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+  </defs>
+  <path d="M0 0 L78 72 L0 144 L28 144 L106 72 L28 0 Z" fill="url(#ta-mark)"/>
+  <path d="M48 0 L126 72 L48 144 L76 144 L154 72 L76 0 Z" fill="url(#ta-mark)" opacity="0.92"/>
+</svg>

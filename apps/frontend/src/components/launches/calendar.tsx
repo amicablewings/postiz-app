@@ -7,6 +7,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -31,6 +32,7 @@ import 'dayjs/locale/tr';
 import 'dayjs/locale/vi';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
+import { useSearchParams } from 'next/navigation';
 import clsx from 'clsx';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { ExistingDataContextProvider } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
@@ -566,7 +568,18 @@ export const ListView = () => {
 };
 
 export const Calendar = () => {
-  const { display } = useCalendar();
+  const { display, loading } = useCalendar();
+  const searchParams = useSearchParams();
+  const group = searchParams.get('group');
+  const { editPost } = usePostActions();
+  const openedGroup = useRef<string | null>(null);
+  useEffect(() => {
+    if (!group || loading || openedGroup.current === group) {
+      return;
+    }
+    openedGroup.current = group;
+    editPost({ group })().catch(() => undefined);
+  }, [group, loading, editPost]);
   return (
     <>
       {display === 'list' ? (

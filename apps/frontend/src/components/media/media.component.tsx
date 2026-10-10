@@ -53,6 +53,9 @@ import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { useShallow } from 'zustand/react/shallow';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import { useDebounce } from 'use-debounce';
+import Link from 'next/link';
+import useCookie from 'react-use-cookie';
+import dayjs from 'dayjs';
 const Polonto = dynamic(
   () => import('@gitroom/frontend/components/launches/polonto')
 );
@@ -195,6 +198,233 @@ export const ShowMediaBoxModal: FC = () => {
   }, []);
   return null;
 };
+
+const filterClass =
+  'h-[44px] px-[14px] rounded-[8px] bg-newBgColorInner border border-newColColor text-[14px] outline-none focus:border-[#612BD3]';
+
+const MediaLibraryFilters: FC<{
+  search: string;
+  setSearch: (value: string) => void;
+  brand: string;
+  setBrand: (value: string) => void;
+  mediaType: string;
+  setMediaType: (value: string) => void;
+  sort: string;
+  setSort: (value: string) => void;
+}> = ({
+  search,
+  setSearch,
+  brand,
+  setBrand,
+  mediaType,
+  setMediaType,
+  sort,
+  setSort,
+}) => {
+  const fetch = useFetch();
+  const t = useT();
+  const loadBrands = useCallback(async () => {
+    return (await fetch('/integrations/customers')).json();
+  }, [fetch]);
+  const { data: brands } = useSWR('media-library-brands', loadBrands);
+
+  return (
+    <div className="flex flex-wrap items-center gap-[8px]">
+      <input
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder={t('search_media_by_name', 'Search by file name')}
+        className={clsx(filterClass, 'flex-1 min-w-[180px]')}
+      />
+      <select
+        aria-label={t('brand', 'Brand')}
+        value={brand}
+        onChange={(e) => setBrand(e.target.value)}
+        className={filterClass}
+      >
+        <option value="">{t('all_brands', 'All brands')}</option>
+        <option value="none">{t('no_brand', 'No brand')}</option>
+        {(brands || []).map((item: { id: string; name: string }) => (
+          <option key={item.id} value={item.id}>
+            {item.name}
+          </option>
+        ))}
+      </select>
+      <select
+        aria-label={t('type', 'Type')}
+        value={mediaType}
+        onChange={(e) => setMediaType(e.target.value)}
+        className={filterClass}
+      >
+        <option value="">{t('all_types', 'All types')}</option>
+        <option value="image">{t('images', 'Images')}</option>
+        <option value="video">{t('videos', 'Videos')}</option>
+      </select>
+      <select
+        aria-label={t('sort', 'Sort')}
+        value={sort}
+        onChange={(e) => setSort(e.target.value)}
+        className={filterClass}
+      >
+        <option value="newest">{t('newest', 'Newest')}</option>
+        <option value="oldest">{t('oldest', 'Oldest')}</option>
+        <option value="name">{t('name', 'Name')}</option>
+      </select>
+    </div>
+  );
+};
+
+const MediaLayoutToggle: FC<{
+  layout: 'cards' | 'list';
+  setLayout: (value: 'cards' | 'list') => void;
+}> = ({ layout, setLayout }) => {
+  const t = useT();
+  const buttonClass = (active: boolean) =>
+    clsx(
+      'h-[44px] px-[14px] text-[14px]',
+      active ? 'bg-[#612BD3] text-white' : 'bg-newBgColorInner text-newTextColor'
+    );
+
+  return (
+    <div className="flex rounded-[8px] border border-newColColor overflow-hidden shrink-0">
+      <button
+        type="button"
+        aria-pressed={layout === 'cards'}
+        className={buttonClass(layout === 'cards')}
+        onClick={() => setLayout('cards')}
+      >
+        {t('cards', 'Cards')}
+      </button>
+      <button
+        type="button"
+        aria-pressed={layout === 'list'}
+        className={buttonClass(layout === 'list')}
+        onClick={() => setLayout('list')}
+      >
+        {t('list', 'List')}
+      </button>
+    </div>
+  );
+};
+
+const MediaLibraryFile: FC<{
+  media: any;
+  variant: 'cards' | 'list';
+  onDelete: (event: any) => void;
+  onMaximize: (event: any) => void;
+}> = ({ media, variant, onDelete, onMaximize }) => {
+  const t = useT();
+  const mediaDirectory = useMediaDirectory();
+  const name = media.originalName || media.name;
+  const preview = hasExtension(media.path, 'mp4') ? (
+    <VideoFrame url={mediaDirectory.set(media.path)} />
+  ) : (
+    <img
+      className="w-full h-full object-cover"
+      src={mediaDirectory.set(media.path)}
+      alt={media.alt || name || 'media'}
+    />
+  );
+  const campaigns = media.campaigns?.length ? (
+    <div className="flex flex-col gap-[4px]">
+      {media.campaigns.map((campaign: any) => (
+        <Link
+          key={campaign.group}
+          href={campaign.href}
+          className="text-[13px] text-[#612BD3] hover:underline truncate"
+        >
+          {campaign.label}
+        </Link>
+      ))}
+    </div>
+  ) : (
+    <div className="text-[13px] text-newTextColor/60">
+      {t('media_not_used', 'Not used in a campaign')}
+    </div>
+  );
+
+  if (variant === 'list') {
+    return (
+      <div className="group flex gap-[12px] p-[10px] rounded-[10px] border border-newColColor">
+        <div className="relative w-[84px] h-[84px] shrink-0 rounded-[8px] overflow-hidden">
+          <DeleteCircleIcon
+            className="cursor-pointer hidden z-[100] group-hover:block absolute -top-[2px] -end-[2px]"
+            onClick={onDelete}
+          />
+          <div
+            onClick={onMaximize}
+            className="cursor-pointer absolute z-[20] left-[50%] top-[50%] -translate-x-[50%] -translate-y-[50%] hidden group-hover:block"
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 14 14"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M2 9H0V14H5V12H2V9ZM0 5H2V2H5V0H0V5ZM12 12H9V14H14V9H12V12ZM9 0V2H12V5H14V0H9Z"
+                fill="#F1F5F9"
+              />
+            </svg>
+          </div>
+          {preview}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[14px] font-[500] truncate">{name}</div>
+          <div className="mt-[6px]">{campaigns}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="group flex flex-col min-w-0 rounded-[12px] border border-newColColor bg-newBgColorInner overflow-hidden">
+      <div className="relative aspect-[4/3] bg-newBgColor">
+        <DeleteCircleIcon
+          className="cursor-pointer hidden z-[100] group-hover:block absolute top-[8px] end-[8px]"
+          onClick={onDelete}
+        />
+        <div
+          onClick={onMaximize}
+          className="cursor-pointer absolute z-[20] left-[50%] top-[50%] -translate-x-[50%] -translate-y-[50%] hidden group-hover:block p-[6px] bg-black/40 rounded-[6px]"
+        >
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 14 14"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M2 9H0V14H5V12H2V9ZM0 5H2V2H5V0H0V5ZM12 12H9V14H14V9H12V12ZM9 0V2H12V5H14V0H9Z"
+              fill="#F1F5F9"
+            />
+          </svg>
+        </div>
+        {hasExtension(media.path, 'mp4') && (
+          <div className="absolute top-[8px] start-[8px] z-[10] text-[11px] font-[600] uppercase tracking-[0.04em] px-[6px] py-[2px] rounded-[6px] bg-black/60 text-white">
+            {t('video', 'Video')}
+          </div>
+        )}
+        {preview}
+      </div>
+      <div className="flex flex-col gap-[8px] p-[12px] min-w-0">
+        <div>
+          <div className="text-[14px] font-[500] line-clamp-2 break-all">{name}</div>
+          {media.createdAt && (
+            <div className="text-[12px] text-newTextColor/60 mt-[4px]">
+              {dayjs(media.createdAt).format('MMM D, YYYY')}
+            </div>
+          )}
+        </div>
+        {campaigns}
+      </div>
+    </div>
+  );
+};
+
 export const showMediaBox = (
   callback: (params: { id: string; path: string }) => void
 ) => {
@@ -210,10 +440,27 @@ export const MediaBox: FC<{
 }> = ({ type, standalone, setMedia }) => {
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
+  const [brand, setBrand] = useState('');
+  const [mediaType, setMediaType] = useState('');
+  const [sort, setSort] = useState('newest');
+  const [layoutSaved, setLayout] = useCookie('media-library-layout', 'cards');
+  const layout = layoutSaved === 'list' ? 'list' : 'cards';
   const [debouncedSearch] = useDebounce(search, 300);
   const fetch = useFetch();
   const modals = useModals();
   const toaster = useToaster();
+  const setBrandAndReset = useCallback((value: string) => {
+    setBrand(value);
+    setPage(0);
+  }, []);
+  const setMediaTypeAndReset = useCallback((value: string) => {
+    setMediaType(value);
+    setPage(0);
+  }, []);
+  const setSortAndReset = useCallback((value: string) => {
+    setSort(value);
+    setPage(0);
+  }, []);
   useEffect(() => {
     setPage(0);
   }, [debouncedSearch]);
@@ -222,10 +469,21 @@ export const MediaBox: FC<{
     if (debouncedSearch.trim()) {
       params.set('search', debouncedSearch.trim());
     }
+    if (standalone) {
+      if (brand) {
+        params.set('brand', brand);
+      }
+      if (mediaType) {
+        params.set('type', mediaType);
+      }
+      if (sort) {
+        params.set('sort', sort);
+      }
+    }
     return (await fetch(`/media?${params.toString()}`)).json();
-  }, [page, debouncedSearch]);
+  }, [page, debouncedSearch, brand, mediaType, sort, standalone, fetch]);
   const { data, mutate, isLoading } = useSWR(
-    `get-media-${page}-${debouncedSearch}`,
+    `get-media-${page}-${debouncedSearch}-${standalone ? `${brand}-${mediaType}-${sort}` : ''}`,
     loadMedia
   );
   const [selected, setSelected] = useState([]);
@@ -396,6 +654,40 @@ export const MediaBox: FC<{
     [mutate]
   );
 
+  const groupedMedia = useMemo(() => {
+    const groups = new Map<
+      string,
+      { id: string; name: string; items: any[] }
+    >();
+    for (const media of data?.results || []) {
+      const brands = media.brands?.length
+        ? media.brands
+        : [{ id: '', name: '' }];
+      const visible =
+        brand && brand !== 'none'
+          ? brands.filter((item: { id: string }) => item.id === brand)
+          : brand === 'none'
+          ? [{ id: '', name: '' }]
+          : brands;
+      for (const item of visible.length ? visible : brands) {
+        const key = item.id || '';
+        if (!groups.has(key)) {
+          groups.set(key, { id: key, name: item.name || '', items: [] });
+        }
+        groups.get(key)!.items.push(media);
+      }
+    }
+    return [...groups.values()].sort((a, b) => {
+      if (!a.name) {
+        return 1;
+      }
+      if (!b.name) {
+        return -1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+  }, [data?.results, brand]);
+
   const btn = useMemo(() => {
     return (
       <button
@@ -420,21 +712,35 @@ export const MediaBox: FC<{
       <div className="flex flex-col flex-1">
         <div
           className={clsx(
-            'flex items-center gap-[12px]',
-            !isLoading &&
+            'flex flex-wrap items-center gap-[12px]',
+            !standalone &&
+              !isLoading &&
               !data?.results?.length &&
               !debouncedSearch &&
               'hidden'
           )}
         >
           <div className="flex-1">
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t('search_media_by_name', 'Search by file name')}
-              className="w-full h-[44px] px-[14px] rounded-[8px] bg-newBgColorInner border border-newColColor text-[14px] outline-none focus:border-[#612BD3]"
-            />
+            {standalone ? (
+              <MediaLibraryFilters
+                search={search}
+                setSearch={setSearch}
+                brand={brand}
+                setBrand={setBrandAndReset}
+                mediaType={mediaType}
+                setMediaType={setMediaTypeAndReset}
+                sort={sort}
+                setSort={setSortAndReset}
+              />
+            ) : (
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t('search_media_by_name', 'Search by file name')}
+                className="w-full h-[44px] px-[14px] rounded-[8px] bg-newBgColorInner border border-newColColor text-[14px] outline-none focus:border-[#612BD3]"
+              />
+            )}
           </div>
           <input
             type="file"
@@ -444,6 +750,12 @@ export const MediaBox: FC<{
             multiple={true}
           />
           <div className="flex gap-[8px]">
+            {standalone && (
+              <MediaLayoutToggle
+                layout={layout}
+                setLayout={setLayout}
+              />
+            )}
             {btn}
             <ThirdPartyMediaLibrary onImported={() => mutate()} />
           </div>
@@ -484,7 +796,7 @@ export const MediaBox: FC<{
               <>
                 <NoMediaIcon />
                 <div className="text-[20px] font-[600]">
-                  {debouncedSearch
+                  {debouncedSearch || brand || mediaType
                     ? t(
                         'no_media_match_search',
                         'No media matches your search'
@@ -511,7 +823,20 @@ export const MediaBox: FC<{
                 </div>
               </>
             )}
-            {isLoading && (
+            {isLoading && standalone && layout === 'cards' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-[12px]">
+                {[...new Array(8)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="rounded-[12px] border border-newColColor overflow-hidden"
+                  >
+                    <div className="aspect-[4/3] bg-newSep animate-pulse" />
+                    <div className="h-[72px] bg-newBgColorInner" />
+                  </div>
+                ))}
+              </div>
+            )}
+            {isLoading && !(standalone && layout === 'cards') && (
               <>
                 {[...new Array(16)].map((_, i) => (
                   <div
@@ -525,7 +850,37 @@ export const MediaBox: FC<{
                 ))}
               </>
             )}
-            {data?.results
+            {standalone
+              ? groupedMedia.map((group) => (
+                  <div key={group.id || 'none'} className="clear-both mb-[22px]">
+                    <div className="flex items-center gap-[8px] px-[3px] py-[8px]">
+                      <div className="text-[16px] font-[600]">
+                        {group.name || t('no_brand', 'No brand')}
+                      </div>
+                      <div className="text-[13px] text-newTextColor/60">
+                        {group.items.length}
+                      </div>
+                    </div>
+                    <div
+                      className={
+                        layout === 'cards'
+                          ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-[12px]'
+                          : 'flex flex-col gap-[8px]'
+                      }
+                    >
+                      {group.items.map((media: any) => (
+                        <MediaLibraryFile
+                          key={`${group.id}-${media.id}`}
+                          media={media}
+                          variant={layout}
+                          onDelete={deleteImage(media)}
+                          onMaximize={maximize(media)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))
+              : data?.results
               ?.filter((f: any) => {
                 if (type === 'video') {
                   return hasExtension(f.path, 'mp4');
