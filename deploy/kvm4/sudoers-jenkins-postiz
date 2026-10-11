@@ -1,0 +1,3 @@
+# /etc/sudoers.d/jenkins-postiz (mode 0440, root:root)
+# The jenkins user may only run the Postiz deploy helper; it validates every argument.
+jenkins ALL=(root) NOPASSWD: /usr/local/sbin/postiz-ci build *, /usr/local/sbin/postiz-ci verify *, /usr/local/sbin/postiz-ci deploy *, /usr/local/sbin/postiz-ci rollback

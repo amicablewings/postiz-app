@@ -1,4 +1,6 @@
-FROM postiz-app:invite
+# CI builds Dockerfile.dev first and passes that image as BASE_IMAGE
+ARG BASE_IMAGE=postiz-app:base
+FROM ${BASE_IMAGE}
 
 COPY apps/frontend/public/brand /app/apps/frontend/public/brand
 COPY apps/frontend/src/app/topahead-theme.scss /app/apps/frontend/src/app/topahead-theme.scss
