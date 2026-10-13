@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+# Root-owned build/deploy helper for Postiz on kvm4.
+# Installed to /usr/local/sbin/postiz-ci and run by Jenkins through sudo (see
+# deploy/kvm4/sudoers-jenkins-postiz). Jenkins never gets a docker group or a root shell:
+# it can only call these subcommands, and every argument is validated here.
+#
+#   postiz-ci build    <workspace> <sha>   build postiz-app:ci-<sha> from the workspace
+#   postiz-ci verify   <sha>               patch script + provider load check on that image
+#   postiz-ci deploy   <workspace> <sha>   back up the DB, swap the image, health check, auto rollback
+#   postiz-ci rollback                     put the previous image back
+set -euo pipefail
+
+APP_DIR=/opt/postiz-app
+COMPOSE="$APP_DIR/docker-compose.yaml"
+BACKUP_DIR=/opt/backups
+WORKSPACE_ROOT=/var/lib/jenkins/workspace
+STATE_FILE="$APP_DIR/.previous-image"
+IMAGE_LINE='^    image: postiz-app:'
+
+die() { echo "postiz-ci: $*" >&2; exit 1; }
+
+check_sha() { [[ "${1:-}" =~ ^[0-9a-f]{7,40}$ ]] || die "invalid sha '${1:-}'"; }
+
+check_workspace() {
+  local dir
+  dir=$(realpath -e "${1:-}" 2>/dev/null) || die "workspace not found"
+  [[ "$dir" == "$WORKSPACE_ROOT"/* ]] || die "workspace must be under $WORKSPACE_ROOT"
+  [[ -f "$dir/Dockerfile.dev" && -f "$dir/Dockerfile.topahead" ]] || die "not a postiz checkout"
+  echo "$dir"
+}
+
+current_image() { grep -m1 "$IMAGE_LINE" "$COMPOSE" | sed -E 's/^ *image: //'; }
+
+set_image() {
+  sed -i -E "0,/$IMAGE_LINE.*/s##    image: $1#" "$COMPOSE"
+  [[ "$(current_image)" == "$1" ]] || die "could not set image to $1"
+}
+
+wait_healthy() {
+  local i
+  for i in $(seq 1 48); do
+    if curl -fsS -m 5 -o /dev/null http://127.0.0.1:4007/auth &&
+      docker logs --since 10m postiz 2>&1 | grep -q 'Backend started successfully'; then
+      return 0
+    fi
+    sleep 5
+  done
+  return 1
+}
+
+cmd_build() {
+  local dir sha
+  dir=$(check_workspace "${1:-}"); sha=${2:-}; check_sha "$sha"
+  cd "$dir"
+  nice -n 10 docker build -f Dockerfile.dev --build-arg "NEXT_PUBLIC_VERSION=$sha" -t "postiz-app:base-$sha" .
+  nice -n 10 docker build -f Dockerfile.topahead --build-arg "BASE_IMAGE=postiz-app:base-$sha" -t "postiz-app:ci-$sha" .
+  docker rmi "postiz-app:base-$sha" >/dev/null 2>&1 || true
+}
+
+cmd_verify() {
+  local sha=${1:-}; check_sha "$sha"
+  docker image inspect "postiz-app:ci-$sha" >/dev/null || die "image postiz-app:ci-$sha not found"
+  # The container start runs the patch script against /custom, so run exactly that and make
+  # sure every provider the production channels use still loads afterwards.
+  docker run --rm \
+    -v "$APP_DIR/patch-facebook-scopes.py:/patch-facebook-scopes.py:ro" \
+    -v "$APP_DIR/custom:/custom:ro" \
+    "postiz-app:ci-$sha" sh -c '
+      set -e
+      python3 /patch-facebook-scopes.py >/dev/null
+      cd /app/apps/backend
+      node --experimental-require-module -e "
+        const m = require(\"./dist/libraries/nestjs-libraries/src/integrations/integration.manager.js\");
+        const g = new m.IntegrationManager();
+        for (const id of [\"facebook\",\"instagram\",\"youtube\",\"tiktok\",\"slack\",\"medium\",\"joinbrands\"]) {
+          const p = g.getSocialIntegration(id);
+          if (!p || p.identifier !== id) { console.error(\"provider missing: \" + id); process.exit(1); }
+        }
+        console.log(\"providers ok\");
+      "
+    '
+}
+
+cmd_deploy() {
+  local dir sha new prev
+  dir=$(check_workspace "${1:-}"); sha=${2:-}; check_sha "$sha"
+  new="postiz-app:ci-$sha"
+  docker image inspect "$new" >/dev/null || die "image $new not found"
+  prev=$(current_image)
+
+  mkdir -p "$BACKUP_DIR"
+  local dump="$BACKUP_DIR/postiz-db-pre-deploy-$sha-$(date +%Y%m%d%H%M%S).sql.gz"
+  docker exec postiz-postgres pg_dump -U postiz-user postiz-db-local | gzip >"$dump"
+  gzip -t "$dump" || die "database backup is corrupt"
+  echo "backup: $dump"
+  ls -1t "$BACKUP_DIR"/postiz-db-pre-deploy-*.sql.gz | tail -n +15 | xargs -r rm -f
+
+  # Runtime patch inputs are versioned in the repo and mounted by compose.
+  install -m 644 "$dir/patch-facebook-scopes.py" "$APP_DIR/patch-facebook-scopes.py"
+  mkdir -p "$APP_DIR/custom" && cp -a "$dir/custom/." "$APP_DIR/custom/"
+
+  echo "$prev" >"$STATE_FILE"
+  cp "$COMPOSE" "$COMPOSE.bak-ci-$sha"
+  set_image "$new"
+  (cd "$APP_DIR" && docker compose up -d postiz)
+
+  if wait_healthy; then
+    echo "deployed $new (previous: $prev)"
+    docker images postiz-app --format '{{.Tag}}' | grep '^ci-' | sort -r | tail -n +4 |
+      xargs -r -I{} docker rmi "postiz-app:{}" >/dev/null 2>&1 || true
+    return 0
+  fi
+
+  echo "health check failed, rolling back to $prev" >&2
+  set_image "$prev"
+  (cd "$APP_DIR" && docker compose up -d postiz)
+  wait_healthy || echo "WARNING: previous image did not become healthy either" >&2
+  return 1
+}
+
+cmd_rollback() {
+  local prev
+  prev=$(cat "$STATE_FILE" 2>/dev/null) || die "no previous image recorded"
+  docker image inspect "$prev" >/dev/null || die "previous image $prev is gone"
+  set_image "$prev"
+  (cd "$APP_DIR" && docker compose up -d postiz)
+  wait_healthy && echo "rolled back to $prev"
+}
+
+case "${1:-}" in
+  build) shift; cmd_build "$@" ;;
+  verify) shift; cmd_verify "$@" ;;
+  deploy) shift; cmd_deploy "$@" ;;
+  rollback) shift; cmd_rollback ;;
+  *) die "usage: postiz-ci build|verify|deploy|rollback" ;;
+esac
